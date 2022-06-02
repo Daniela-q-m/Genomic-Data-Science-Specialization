@@ -1,0 +1,272 @@
+---
+title: "Three Tables of Genomics & Exploratory Data Analysis"
+output: html_notebook
+---
+These notes come from Coursera's Statistics for Genomic Data Science course.
+Three tables in genomics: Genomics Data, feature data and phenotype data.
+Next, some exploratory data analysis will be conducted. 
+
+#Three Tables in Genomics
+```{r}
+#Install Biobase package
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("Biobase")
+```
+```{r}
+library(Biobase)
+```
+
+Open the connection from bowtie experiment data (recount data) using a URL
+```{r}
+connection=url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=connection)
+ls()
+close(connection)
+```
+
+Change bodymap.eset to bm in order to shorten the variable name. Look at bodymap variable and we can see that it is made up of 19 samples and 5280 features. 
+```{r}
+bm=bodymap.eset
+bm
+```
+```{r}
+exp_data=exprs(bm) #Get expression data 
+dim(exp_data) #Get dimensions of expression data
+head(exp_data) #Print first couple of lines
+```
+Number of rows in pheno_data should be the same as the number of columns as expression data since each row in pheno data describes each of the columns in expression data. 
+```{r}
+pheno_data= pData(bm)#Wht are samples made up of, how are they collectd,etc
+dim(pheno_data) 
+```
+
+```{r}
+head(pheno_data)
+```
+Feature data describes genomic features of dataset
+```{r}
+feature_data=fData(bm)
+dim(feature_data)
+```
+```{r}
+head(feature_data)
+```
+###  Exploratory Data Analysis
+Install and load necessary packages:
+```{r}
+install.packages('gplots')
+```
+```{r}
+update.packages(repos='http://cran.rstudio.com/', ask=FALSE, checkBuilt=TRUE)
+```
+
+```{r}
+install.packages("devtools")
+```
+
+```{r}
+devtools::install_github('alyssafrazee/RSkittleBrewer')
+```
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("org.Hs.eg.db")
+```
+```{r}
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("AnnotationDbi")
+```
+```{r}
+BiocManager::install("DBI")
+```
+```{r}
+BiocManager::install("AnnotationDbi")
+```
+```{r}
+BiocManager::install("org.Hs.eg.db")
+```
+
+```{r}
+install.packages("org.Hs.eg.db")
+```
+
+```{r}
+library("devtools")
+```
+
+```{r}
+library("gplots")
+```
+
+```{r}
+library("RSkittleBrewer")
+```
+```{r}
+library("org.Hs.eg.db")
+```
+```{r}
+library("AnnotationDbi")
+```
+
+Set the palette with defined colors.
+```{r}
+girly_colors=c('orchid3','magenta3','turquoise2','slateblue2','palegreen1')
+palette(girly_colors)
+```
+
+Make sure circles are filled in when making plots.
+```{r}
+par(pch=19)
+```
+
+Check tables available
+```{r}
+ls()
+```
+```{r}
+head(pheno_data)
+```
+### Explore the pheno_data table 
+```{r}
+table(pheno_data$gender)
+```
+```{r}
+table(pheno_data$gender, pheno_data$race)
+```
+
+Based on the summary distribution is slightly skewed. 
+```{r}
+summary(exp_data)
+```
+```{r}
+table(pheno_data$age)
+```
+
+To see NA values in the table:
+```{r}
+table(pheno_data$age, useNA='ifany')
+```
+Check if there are ay common missing value
+```{r}
+sum(pheno_data$age==" ", na.rm=TRUE)
+```
+Check to see if there are any missing values in the genomic data. Here wecheck row by row. 
+```{r}
+is.na(exp_data)[1,]
+```
+An alternativeis to sum the rows that have missing values and check for non-zero values:
+```{r}
+gene_na=rowSums(is.na(exp_data))
+table(gene_na)
+```
+Check column by column alternatively:
+
+```{r}
+gene_na=colSums(is.na(exp_data))
+table(gene_na)
+```
+
+### Plotting and Exploratory Data Analysis
+```{r}
+dim(exp_data)
+```
+
+```{r}
+head(exp_data)
+```
+
+Here we see that most values for each of the samples are very close to zero. Next, we can log transform the data. 
+```{r}
+boxplot(exp_data[,1:19])
+```
+```{r}
+boxplot(log2(exp_data+1), 
+        col=1, 
+        range=0,
+        ylim=c(0,1)
+        ,xlab="Sample",
+        ylab="Expression",
+        main="Boxplot of all samples expression data", font.main=1)
+```
+Make histogram. For this example, The histogram below represents the sample representedon coumn 1 of exp_data. 
+```{r}
+#par(mfrow=c(1,1))
+hist(log2(exp_data[,1]+1),
+     col=1,
+     main="Histogram of sample ERS025098 expression data",
+     xlab="Frequency",
+     ylab="Counts", 
+     font.main=1)
+
+```
+Density plots. We can ad plots on top of eachoter. Example with the first three samples:
+```{r}
+plot(density(log2(exp_data[,1]+1)),col=3, main="Density plots of first three samples")
+lines(density(log2(exp_data[,2]+1)),col=1)
+lines(density(log2(exp_data[,3]+1)),col=4)
+```
+qqplots. Each dot represents one quantile in each distribution. You can compare the percentiles sample by sample. Drawing 45 degree line helps to see the difference between the two samples. 
+```{r}
+qqplot(log2(exp_data[,1]+1),log2(exp_data[,2]+1), col=1, main="qqplot of samples 1 and 2 expression data",xlab="Sample 1",
+     ylab="Sample 2")
+abline(c(0,1))
+```
+Bland Altman Plot (MA Plot). This is done by taking the difference between the two samples as the y axis and the sum of the two samples as the x axis (both log transformed). In this plot we can see that as the counts increase the samples get closed together in similarity. 
+```{r}
+mm=log2(exp_data[,1]+1)-log2(exp_data[,2]+1)
+aa=log2(exp_data[,1]+1)+log2(exp_data[,2]+1)
+plot(aa, mm, col=4, main="Bland Altman Plot for samples 1 and 2")
+```
+For count based data,it is helpful to remove low-count features. Create a dataframe in order to be able to use the dplyr filtering commands to remove means less than one.
+```{r}
+install.packages('dplyr')
+library('dplyr')
+```
+
+```{r}
+exp_data=as.data.frame(exp_data)
+filtered_edata=dplyr::filter(exp_data,rowMeans(exp_data)>1)
+boxplot(as.matrix(log2(filtered_edata+1)),col=2, main="Filtered expression data for all samples")
+```
+### Compare dataset to annotation and metadat
+Get the IDs for the features. 
+```{r}
+ls()
+```
+```{r}
+head(pheno_data)
+```
+```{r}
+IDS<-as.character(rownames(exp_data))
+head(IDS)
+```
+Get the chromosome information for each of the ensemble IDs
+```{r}
+chr=AnnotationDbi::select(org.Hs.eg.db, keys=IDS,keytype="ENSEMBL",columns="CHR")
+```
+```{r}
+head(chr)
+```
+Check that chr has the same dimensions as the expression dataset-it doesnt. Remove duplicated values from chromosome dataset. 
+```{r}
+dim(chr)
+dim(exp_data)
+```
+```{r}
+chr=chr[!duplicated(chr[,1]),]
+dim(chr)
+```
+Check that all of the row names in the chromosome data match with the rownames in the expression data. 
+```{r}
+all(chr[,1]==rownames(exp_data))
+```
+Filter chromosome Y samples. Convert exp_data to dataframe to apply the filter command. 
+```{r}
+
+```
+
